@@ -1,0 +1,142 @@
+# python -m torch.distributed.launch --nproc_per_node=2 --master_port=4322 /hy-tmp/optimize_stage3/basicsr/train.py -opt /hy-tmp/optimize_stage3/options/LOL_v1_stage2.yml --launcher pytorch
+# export OMP_NUM_THREADS=32
+name: my_stage2
+model_type: CodeFormerIdxModel
+num_gpu: 1
+manual_seed: 100    # 0
+
+# dataset and data loader settings
+datasets:
+  train:
+    name: LOL
+    type: PairedImageDataset
+    dataroot_gt: /home/dell/桌面/drh/LOL-v1/our485/high
+    dataroot_lq: /home/dell/桌面/drh/LOL-v1/our485/low
+    filename_tmpl: '{}'
+    io_backend:
+      type: disk
+
+    in_size: 256
+    gt_size: 256
+
+    # data loader
+    num_worker_per_gpu: 1
+    batch_size_per_gpu: 8 # 16
+    dataset_enlarge_ratio: 1
+    prefetch_mode: ~
+    scale: 1
+    geometric_augs: true
+
+  val:
+    name: LOL_Test
+    type: PairedImageDataset
+    dataroot_lq: /home/dell/桌面/drh/LOL-v1/eval15/low
+    dataroot_gt: /home/dell/桌面/drh/LOL-v1/eval15/high
+    io_backend:
+      type: disk
+    scale: 1
+
+
+# network structures
+network_g:
+  type: CodeFormer
+  dim_embd: 256
+  n_head: 8
+  mamba_layers: 6
+  transformer_layers: 2
+  codebook_size: 1024
+  latent_size: 256
+  connect_list: ['32', '64', '128']
+  fix_modules: ['hq_encoder', 'quantize','generator']
+  vqgan_path: ~
+  img_size: 256
+  nf: 64
+  ch_mult: [1, 2, 2, 4, 4]
+  res_blocks: 2
+  d_state: 32
+  mlp_ratio: 4
+  L: 32
+  hidden_list: [128, 128, 128]
+
+network_vqgan: # this config is needed if no pre-calculated latent
+  type: VQAutoEncoder
+  img_size: 256
+  nf: 64
+  ch_mult: [1, 2, 2, 4, 4]
+  quantizer: 'nearest'
+  codebook_size: 1024
+
+# path
+path:
+  pretrain_network_hq: /home/dell/桌面/drh/retry_no_norm/experiments/20241003_222435_VQGAN_FineTune_Lol/models/net_g_latest.pth    # Fine-Tuned VQGAN
+  strict_load_hq: true
+  pretrain_network_g: ~   # to do if you need to continue training
+  param_key_g: params_ema
+  strict_load_g: false
+  pretrain_network_d: ~   # no need to do
+  strict_load_d: true
+  resume_state: ~
+
+train:
+  use_hq_feat_loss: true
+  entropy_loss_weight: 2.0 # 0.99
+  feat_loss_weight: 0.2 # 0.01
+  cross_entropy_loss: true
+  fidelity_weight: 0
+
+  optim_g:
+    type: Adam
+    lr: !!float 5e-5    # 1e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  scheduler:
+    type: CosineAnnealingRestartCyclicLR
+    periods: [40000] # [10000]
+    restart_weights: [1]
+    eta_mins: [0.0000001] # [0.000075]
+
+  total_iter: 40000 # 10000
+
+  warmup_iter: -1  # no warm up
+  ema_decay: 0.995
+
+  use_adaptive_weight: true
+
+  net_g_start_iter: 0
+  net_d_iters: 1
+  net_d_start_iter: 66666666
+  manual_seed: 0
+
+# validation settings
+val:
+  val_freq: !!float 2000 # no validation
+  save_img: false
+
+  test_shape: [1, 25, 38, 256]
+
+  metrics:
+    psnr: # metric name, can be arbitrary
+      type: calculate_psnr
+      crop_border: 4
+      test_y_channel: false
+    ssim: # metric name, can be arbitrary
+      type: calculate_ssim
+      crop_border: 4
+      test_y_channel: false
+
+# logging settings
+logger:
+  print_freq: 10
+  save_checkpoint_freq: !!float 5000    # 1e4
+  use_tb_logger: true
+  wandb:
+    project: ~
+    resume_id: ~
+
+# dist training settings
+dist_params:
+  backend: nccl
+  port: 29412
+
+find_unused_parameters: true
