@@ -1,0 +1,137 @@
+# python -m torch.distributed.launch --nproc_per_node=2 --master_port=4321 /hy-tmp/optimize_stage3/basicsr/train.py -opt /hy-tmp/optimize_stage3/options/FineTune_LOLv2_real.yml --launcher pytorch
+# export OMP_NUM_THREADS=32
+name: VQGAN_FineTune_Lol_v2_real
+model_type: VQGANModel
+num_gpu: 1
+manual_seed: 3407
+
+datasets:
+  train:
+    name: Lol_v2_real_FineTune
+    type: PairedImageDataset
+    dataroot_lq: /home/dell/桌面/drh/LOL-v2/Real_captured/Train/Normal
+    dataroot_gt: /home/dell/桌面/drh/LOL-v2/Real_captured/Train/Normal
+    filename_tmpl: '{}'
+    io_backend:
+      type: disk
+
+    in_size: 256
+    gt_size: 256
+    use_flip: true
+    use_rot: true
+
+    num_worker_per_gpu: 1
+    batch_size_per_gpu: 8
+    dataset_enlarge_ratio: 1
+
+    prefetch_mode: ~
+    geometric_augs: true
+    scale: 1
+
+  val:
+    name: LOL_v2_real_Test
+    type: PairedImageDataset
+    dataroot_lq: /home/dell/桌面/drh/LOL-v2/Real_captured/Test/Normal
+    dataroot_gt: /home/dell/桌面/drh/LOL-v2/Real_captured/Test/Normal
+    io_backend:
+      type: disk
+    scale: 1
+
+network_g:
+  type: VQAutoEncoder
+  img_size: 256
+  nf: 64
+  ch_mult: [1, 2, 2, 4, 4]
+  quantizer: 'nearest'
+  codebook_size: 1024
+
+network_d:
+  type: VQGANDiscriminator
+  nc: 3
+  ndf: 64
+
+# path
+path:
+  pretrain_network_g: /home/dell/桌面/drh/retry_no_norm/net_g_pretrain.pth  # need to modify
+  param_key_g: params_ema
+  strict_load_g: true
+  pretrain_network_d: ~
+  strict_load_d: true
+  resume_state: ~
+
+train:
+  optim_g:
+    type: Adam
+    lr: !!float 8e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+  optim_d:
+    type: Adam
+    lr: !!float 8e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  scheduler:
+    type: MultiStepLR
+    milestones: [15000] # [25000, 125000]
+    gamma: 0.1
+
+  total_iter: 15000 # 125000
+
+  warmup_iter: -1  # no warm up
+  ema_decay: 0.995 # GFPGAN: 0.5**(32 / (10 * 1000) == 0.998; Unleashing: 0.995
+
+  pixel_opt:
+    type: L1Loss
+    loss_weight: 1.0
+    reduction: mean
+
+  perceptual_opt:
+    type: LPIPSLoss
+    loss_weight: 1.0
+    use_input_norm: true
+    range_norm: true
+
+  gan_opt:
+    type: GANLoss
+    gan_type: vanilla
+    loss_weight: !!float 1.0 # adaptive_weighting
+
+  net_g_start_iter: 0
+  net_d_iters: 1
+  net_d_start_iter: 666666666
+  disc_weight: 0.2
+  manual_seed: 0
+
+# validation settings
+val:
+  val_freq: !!float 1000    # 1000
+  save_img: false
+
+  metrics:
+    psnr: # metric name, can be arbitrary
+      type: calculate_psnr
+      crop_border: 4
+      test_y_channel: false
+
+    ssim: # metric name, can be arbitrary
+      type: calculate_ssim
+      crop_border: 4
+      test_y_channel: false
+
+# logging settings
+logger:
+  print_freq: 50
+  save_checkpoint_freq: !!float 5000
+  use_tb_logger: true
+  wandb:
+    project: ~
+    resume_id: ~
+
+# dist training settings
+dist_params:
+  backend: nccl
+  port: 29411
+
+find_unused_parameters: true
+
