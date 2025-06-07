@@ -2,7 +2,7 @@ import datetime
 import logging
 import sys
 
-sys.path.append(r"/home/dell/桌面/drh/CodeFormer/basicsr")
+sys.path.append(r"../basicsr")
 import time
 
 from .dist_util import get_dist_info, master_only

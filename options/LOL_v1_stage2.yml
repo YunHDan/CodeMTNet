@@ -1,7 +1,7 @@
 # python -m torch.distributed.launch --nproc_per_node=2 --master_port=4322 /hy-tmp/optimize_stage3/basicsr/train.py -opt /hy-tmp/optimize_stage3/options/LOL_v1_stage2.yml --launcher pytorch
 # export OMP_NUM_THREADS=32
 name: my_stage2
-model_type: CodeFormerIdxModel
+model_type: codemtnetIdxModel
 num_gpu: 1
 manual_seed: 100    # 0
 
@@ -10,8 +10,8 @@ datasets:
   train:
     name: LOL
     type: PairedImageDataset
-    dataroot_gt: /home/dell/桌面/drh/LOL-v1/our485/high
-    dataroot_lq: /home/dell/桌面/drh/LOL-v1/our485/low
+    dataroot_gt: # ../LOL-v1/our485/high
+    dataroot_lq: # ../LOL-v1/our485/low
     filename_tmpl: '{}'
     io_backend:
       type: disk
@@ -21,7 +21,7 @@ datasets:
 
     # data loader
     num_worker_per_gpu: 1
-    batch_size_per_gpu: 8 # 16
+    batch_size_per_gpu: 1 # 8
     dataset_enlarge_ratio: 1
     prefetch_mode: ~
     scale: 1
@@ -30,8 +30,8 @@ datasets:
   val:
     name: LOL_Test
     type: PairedImageDataset
-    dataroot_lq: /home/dell/桌面/drh/LOL-v1/eval15/low
-    dataroot_gt: /home/dell/桌面/drh/LOL-v1/eval15/high
+    dataroot_lq: # ../LOL-v1/eval15/low
+    dataroot_gt: # ../LOL-v1/eval15/high
     io_backend:
       type: disk
     scale: 1
@@ -39,7 +39,7 @@ datasets:
 
 # network structures
 network_g:
-  type: CodeFormer
+  type: codemtnet
   dim_embd: 256
   n_head: 8
   mamba_layers: 6
@@ -68,7 +68,7 @@ network_vqgan: # this config is needed if no pre-calculated latent
 
 # path
 path:
-  pretrain_network_hq: /home/dell/桌面/drh/retry_no_norm/experiments/20241003_222435_VQGAN_FineTune_Lol/models/net_g_latest.pth    # Fine-Tuned VQGAN
+  pretrain_network_hq: # net_g_latest.pth    
   strict_load_hq: true
   pretrain_network_g: ~   # to do if you need to continue training
   param_key_g: params_ema

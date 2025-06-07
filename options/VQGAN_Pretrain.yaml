@@ -7,7 +7,7 @@ datasets:
   train:
     name: HighResolution
     type: HighQualityDataset
-    dataroot_gt: /home/dell/桌面/drh/DIV2K_train_HR
+    dataroot_gt: # ../DIV2K_train_HR
     filename_tmpl: '{}'
     io_backend:
       type: disk
@@ -17,7 +17,7 @@ datasets:
     use_hfilp: true
 
     num_worker_per_gpu: 64
-    batch_size_per_gpu: 4
+    batch_size_per_gpu: 1
     dataset_enlarge_ratio: 100
 
     prefetch_mode: cuda
@@ -28,8 +28,8 @@ datasets:
   val:
      name: LOL_Test
      type: PairedImageDataset
-     dataroot_lq: /home/dell/桌面/drh/LOL-v1/eval15/high
-     dataroot_gt: /home/dell/桌面/drh/LOL-v1/eval15/high
+     dataroot_lq: # ../LOL-v1/eval15/low
+     dataroot_gt: # ../LOL-v1/eval15/high
      io_backend:
        type: disk
      scale: 1

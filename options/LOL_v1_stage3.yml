@@ -1,7 +1,7 @@
 # python -m torch.distributed.launch --nproc_per_node=2 --master_port=4323 /hy-tmp/optimize_stage3/basicsr/train.py -opt /hy-tmp/optimize_stage3/options/LOL_v1_stage3.yml --launcher pytorch
 # export OMP_NUM_THREADS=32
 name: my_stage3
-model_type: CodeFormerModel
+model_type: codemtnetModel
 num_gpu: 1
 manual_seed: 42
 
@@ -10,8 +10,8 @@ datasets:
   train:
     name: LOL
     type: PairedImageDataset
-    dataroot_gt: /home/dell/桌面/drh/LOL-v1/our485/high
-    dataroot_lq: /home/dell/桌面/drh/LOL-v1/our485/low
+    dataroot_gt: # ../LOL-v1/our485/high
+    dataroot_lq: # ../LOL-v1/our485/low
     filename_tmpl: '{}'
     io_backend:
       type: disk
@@ -23,7 +23,7 @@ datasets:
 
     # data loader
     num_worker_per_gpu: 1
-    batch_size_per_gpu: 16 # 8
+    batch_size_per_gpu: 1 # 16
     dataset_enlarge_ratio: 1
     prefetch_mode: ~
     scale: 1
@@ -32,15 +32,15 @@ datasets:
   val:
     name: LOL_Test
     type: PairedImageDataset
-    dataroot_lq: /home/dell/桌面/drh/LOL-v1/eval15/low
-    dataroot_gt: /home/dell/桌面/drh/LOL-v1/eval15/high
+    dataroot_lq: # ../LOL-v1/eval15/low
+    dataroot_gt: # ../LOL-v1/eval15/high
     io_backend:
       type: disk
     scale: 1
 
 # network structures
 network_g:
-  type: CodeFormer
+  type: codemtnet
   dim_embd: 256
   n_head: 8
   mamba_layers: 6
@@ -49,7 +49,7 @@ network_g:
   latent_size: 256
   fuse_encoder_block: [12, 8, 4]  # block number in encoder where features will feed forward generator fusion block
   fuse_generator_block: [10, 13, 16]    # block number in decoder where features will be fused by fusion block
-  fix_modules: ['dae','macr', 'hq_encoder', 'quantize','generator']
+  fix_modules: ['dae','mcrb', 'hq_encoder', 'quantize','generator']
   vqgan_path: ~
   img_size: 256
   nf: 64
@@ -71,9 +71,9 @@ network_vqgan: # this config is needed if no pre-calculated latent
 
 # path
 path:
-  pretrain_network_hq: /home/dell/桌面/drh/retry_no_norm/experiments/20241003_222435_VQGAN_FineTune_Lol/models/net_g_latest.pth
+  pretrain_network_hq: # net_g_latest.pth
   strict_load_hq: true
-  pretrain_network_g: /home/dell/桌面/drh/retry_no_norm/experiments/20241004_090909_my_stage2/models/net_g_latest.pth # /home/dell/桌面/drh/retry_no_norm/experiments/20241004_090909_my_stage2/models/net_g_latest.pth
+  pretrain_network_g: # net_g_latest.pth 
   param_key_g: params_ema
   strict_load_g: false
   resume_state: ~

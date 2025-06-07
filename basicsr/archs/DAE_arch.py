@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from .NRDA_arch import NRDA
+from .NRL_arch import NRL
 import torch.nn.functional as F
 
 
@@ -177,7 +177,7 @@ class DAE(nn.Module):
                 if curr_res in attn_resolutions:
                     blocks.append(AttnBlock(block_in_ch))
             if i != 0:
-                blocks.append(NRDA(n_fea_in=block_in_ch * 2, n_fea_out=block_in_ch, n_fea_middle=block_in_ch * 4, emb_ch=block_in_ch, L=L, hidden_list=hidden_list))
+                blocks.append(NRL(n_fea_in=block_in_ch * 2, n_fea_out=block_in_ch, n_fea_middle=block_in_ch * 4, emb_ch=block_in_ch, L=L, hidden_list=hidden_list))
             if i != self.num_resolutions - 1:
                 blocks.append(Downsample(block_in_ch))
                 curr_res = curr_res // 2
@@ -186,7 +186,7 @@ class DAE(nn.Module):
         blocks.append(ResBlock(block_in_ch, block_in_ch))  # 512
         blocks.append(AttnBlock(block_in_ch))
         blocks.append(ResBlock(block_in_ch, block_in_ch))
-        blocks.append(NRDA(n_fea_in=block_in_ch * 2, n_fea_out=block_in_ch, n_fea_middle=block_in_ch * 4, emb_ch=block_in_ch, L=L, hidden_list=hidden_list))
+        blocks.append(NRL(n_fea_in=block_in_ch * 2, n_fea_out=block_in_ch, n_fea_middle=block_in_ch * 4, emb_ch=block_in_ch, L=L, hidden_list=hidden_list))
 
         # normalise and convert to latent size
         blocks.append(normalize(block_in_ch))

@@ -7,7 +7,7 @@ from typing import Optional
 from archs.vqgan_arch import *
 from utils.registry import ARCH_REGISTRY
 from .DAE_arch import DAE, Downsample
-from .macr_arch import MACR
+from .mcrb_arch import mcrb
 from .vqgan_arch import Upsample
 
 
@@ -70,7 +70,7 @@ class Fuse_sft_block(nn.Module):  # CFT
 
 
 @ARCH_REGISTRY.register()
-class Codemtnet(VQAutoEncoder):
+class codemtnet(VQAutoEncoder):
     def __init__(self, dim_embd=256, n_head=8, mamba_layers=4,
                  codebook_size=1024, latent_size=256,
                  connect_list=['32', '64', '128', '256'],
@@ -104,7 +104,7 @@ class Codemtnet(VQAutoEncoder):
         )
 
         # macb
-        self.macr = MACR(dim=dim_embd, norm_layer=nn.LayerNorm, attn_drop_rate=0, d_state=d_state,
+        self.mcrb = mcrb(dim=dim_embd, norm_layer=nn.LayerNorm, attn_drop_rate=0, d_state=d_state,
                          mlp_ratio=mlp_ratio, nhead=n_head,
                          dim_mlp=self.dim_mlp, dropout=0.0, mamba_layers=mamba_layers,
                          transformer_layers=transformer_layers,
@@ -165,12 +165,12 @@ class Codemtnet(VQAutoEncoder):
             if i in out_list:
                 enc_feat_dict[str(self.link_list[str(i)])] = x.clone()       # 10, 13, 16
 
-        # ################# MACR ###################
+        # ################# mcrb ###################
         lq_feat = x  # (BCHW)
         pos_emb = self.position_emb.unsqueeze(1).repeat(1, x.shape[0], 1)
 
         # Mamba-Assisted Codebook Retrival
-        logits = self.macr(lq_feat, pos_emb)
+        logits = self.mcrb(lq_feat, pos_emb)
         logits = logits.permute(1, 0, 2)  # (hw)bn -> b(hw)n
 
         if code_only:  # for training stage II

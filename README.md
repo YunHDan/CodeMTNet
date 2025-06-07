@@ -5,8 +5,8 @@
 First, you need to execute the following command in terminal:
 
 ```bash
-conda create -n your_env_name python=3.9    
-conda activate your_env_name
+conda create -n codemtnet python=3.9    
+conda activate codemtnet
 conda install cudatoolkit==11.7 -c nvidia
 conda install pytorch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 pytorch-cuda=11.7 -c pytorch -c nvidia
 conda install -c "nvidia/label/cuda-11.7.0" cuda-nvcc

@@ -167,9 +167,9 @@ class NRN(nn.Module):
         return input_enc
 
 
-class NRDA(nn.Module):
+class NRL(nn.Module):
     def __init__(self, n_fea_middle, n_fea_in, n_fea_out, emb_ch, L=8, hidden_list=[256, 256, 256]):
-        super(NRDA, self).__init__()
+        super(NRL, self).__init__()
         self.conv1 = nn.Conv2d(n_fea_in, n_fea_middle, kernel_size=1, bias=True)
         self.depth_conv = nn.Conv2d(
             n_fea_middle, n_fea_middle, kernel_size=5, padding=2, bias=True, groups=n_fea_in

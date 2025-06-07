@@ -4,17 +4,15 @@ from os import path as osp
 from tqdm import tqdm
 
 from archs import build_network
-from losses import build_loss
 from metrics import calculate_metric
 from utils import get_root_logger, imwrite, tensor2img
 from utils.registry import MODEL_REGISTRY
 import torch.nn.functional as F
 from .sr_model import SRModel
-from losses import msssim
 
 
 @MODEL_REGISTRY.register()
-class CodeFormerModel(SRModel):
+class codemtnetIdxModel(SRModel):
     def feed_data(self, data):
         self.gt = data['gt'].to(self.device)
         self.lq = data['lq'].to(self.device)
@@ -27,9 +25,7 @@ class CodeFormerModel(SRModel):
         self.ema_decay = train_opt.get('ema_decay', 0)
         if self.ema_decay > 0:
             logger.info(f'Use Exponential Moving Average with decay: {self.ema_decay}')
-            # define network net_g with Exponential Moving Average (EMA)
-            # net_g_ema is used only for testing on one GPU and saving
-            # There is no need to wrap with DistributedDataParallel
+
             self.net_g_ema = build_network(self.opt['network_g']).to(self.device)
             # load pretrained model
             load_path = self.opt['path'].get('pretrain_network_g', None)
@@ -64,38 +60,10 @@ class CodeFormerModel(SRModel):
         self.feat_loss_weight = train_opt.get('feat_loss_weight', 1.0)
         self.cross_entropy_loss = train_opt.get('cross_entropy_loss', True)
         self.entropy_loss_weight = train_opt.get('entropy_loss_weight', 0.5)
-        self.fidelity_weight = train_opt.get('fidelity_weight', 1.0)
-        self.scale_adaptive_gan_weight = train_opt.get('scale_adaptive_gan_weight', 0.8)
+
+        self.fidelity_weight = train_opt.get('fidelity_weight', 0)
 
         self.net_g.train()
-
-        # define losses
-        if train_opt.get('pixel_opt'):
-            self.cri_pix = build_loss(train_opt['pixel_opt']).to(self.device)
-        else:
-            self.cri_pix = None
-
-        if train_opt.get('perceptual_opt'):
-            self.cri_perceptual = build_loss(train_opt['perceptual_opt']).to(self.device)
-        else:
-            self.cri_perceptual = None
-
-        if train_opt.get('gan_opt'):
-            self.cri_gan = build_loss(train_opt['gan_opt']).to(self.device)
-
-        if train_opt.get('ssim_opt'):
-            self.cri_ssim = msssim
-            self.ssim_weight = train_opt['ssim_opt']['loss_weight']
-            self.use_normalize = train_opt['ssim_opt']['normalize']
-        else:
-            self.cri_ssim = None
-            self.ssim_weight = None
-            self.use_normalize = False
-
-        self.fix_generator = train_opt.get('fix_generator', True)
-        logger.info(f'fix_generator: {self.fix_generator}')
-
-        self.net_g_start_iter = train_opt.get('net_g_start_iter', 0)
 
         # set up optimizers and schedulers
         self.setup_optimizers()
@@ -115,26 +83,18 @@ class CodeFormerModel(SRModel):
         self.optimizer_g = self.get_optimizer(optim_type, optim_params_g, **train_opt['optim_g'])
         self.optimizers.append(self.optimizer_g)
 
-
     def optimize_parameters(self, current_iter):
-        logger = get_root_logger()
-
+        # optimize net_g
         self.optimizer_g.zero_grad()
 
         if self.generate_idx_gt:
             md = self.hq_vqgan_fix
         else:
             md = self.net_hq
-
         x, _ = md.hq_encoder(self.gt)
         _, _, quant_stats = md.quantize(x)
         min_encoding_indices = quant_stats['min_encoding_indices']
         self.idx_gt = min_encoding_indices.view(self.b, -1)
-
-        if self.fidelity_weight > 0:
-            self.output, logits, lq_feat = self.net_g(self.lq, w=self.fidelity_weight, detach_16=True)
-        else:
-            logits, lq_feat = self.net_g(self.lq, w=0, code_only=True)
 
         if self.hq_feat_loss:
             # quant_feats
@@ -143,44 +103,25 @@ class CodeFormerModel(SRModel):
             else:
                 quant_feat_gt = self.net_g.quantize.get_codebook_feat(self.idx_gt, shape=[self.b, 16, 16, 256])
 
-        loss_total = 0
+        logits, lq_feat = self.net_g(self.lq, w=0, code_only=True)
+
         l_g_total = 0
         loss_dict = OrderedDict()
-        if current_iter > self.net_g_start_iter:
-            # hq_feat_loss
-            if self.hq_feat_loss:  # codebook loss
-                l_feat_encoder = torch.mean((quant_feat_gt.detach() - lq_feat) ** 2) * self.feat_loss_weight
-                l_g_total += l_feat_encoder
-                loss_dict['l_feat_encoder'] = l_feat_encoder
+        # hq_feat_loss
+        if self.hq_feat_loss:  # codebook loss
+            l_feat_encoder = torch.mean((quant_feat_gt.detach() - lq_feat) ** 2) * self.feat_loss_weight
+            l_g_total += l_feat_encoder
+            loss_dict['l_feat_encoder'] = l_feat_encoder
 
-            # cross_entropy_loss
-            if self.cross_entropy_loss:
-                # b(hw)n -> bn(hw)
-                cross_entropy_loss = F.cross_entropy(logits.permute(0, 2, 1), self.idx_gt) * self.entropy_loss_weight
-                l_g_total += cross_entropy_loss
-                loss_dict['cross_entropy_loss'] = cross_entropy_loss
+        # cross_entropy_loss
+        if self.cross_entropy_loss:
+            # b(hw)n -> bn(hw)
+            cross_entropy_loss = F.cross_entropy(logits.permute(0, 2, 1), self.idx_gt) * self.entropy_loss_weight
+            l_g_total += cross_entropy_loss
+            loss_dict['cross_entropy_loss'] = cross_entropy_loss
 
-            if self.fidelity_weight > 0:  # when fidelity_weight == 0 don't need image-level loss
-                # pixel loss
-                if self.cri_pix:
-                    l_g_pix = self.cri_pix(self.output, self.gt)
-                    l_g_total += l_g_pix
-                    loss_dict['l_g_pix'] = l_g_pix
-
-                # perceptual loss
-                if self.cri_perceptual:
-                    l_g_percep = self.cri_perceptual(self.output, self.gt)
-                    l_g_total += l_g_percep
-                    loss_dict['l_g_percep'] = l_g_percep
-
-                if self.cri_ssim:
-                    l_g_ssim = (1 - self.cri_ssim(self.output, self.gt, normalize=self.use_normalize)) * self.ssim_weight
-                    l_g_total += l_g_ssim
-                    loss_dict['l_g_ssim'] = l_g_ssim
-
-            l_g_total.backward()
-            loss_total += l_g_total
-            self.optimizer_g.step()
+        l_g_total.backward()
+        self.optimizer_g.step()
 
         if self.ema_decay > 0:
             self.model_ema(decay=self.ema_decay)
@@ -188,56 +129,38 @@ class CodeFormerModel(SRModel):
         self.log_dict = self.reduce_loss_dict(loss_dict)
 
     def test(self, w=None):
-        # B, C, H, W = self.lq.shape
-        # if (H * 10 / 16) % 10 < 5:
-        #     height = H // 16
-        # else:
-        #     height = H // 16 + 1
-        # if (W * 10 / 16) % 10 < 5:
-        #     width = W // 16
-        # else:
-        #     width = W // 16 + 1
-        # test_shape = (B, height, width, 256)
-        B, C, H, W = self.lq.shape
-        if (H * 10 / 16) % 10 == 0:
-            height = H // 16
-        else:
-            height = H // 16 + 1
-        if (W * 10 / 16) % 10 == 0:
-            width = W // 16
-        else:
-            width = W // 16 + 1
-        test_shape = (B, height, width, 256)
         with torch.no_grad():
             if hasattr(self, 'net_g_ema'):
-                self.net_g_ema.eval()
                 if w is not None:
-                    self.output, _, _ = self.net_g_ema(self.lq, w=w, mode='test', test_shape=test_shape)
+                    self.output, _, _ = self.net_g_ema(self.lq, w=w, mode='test', test_shape=self.test_shape, code_only=False)
                 else:
-                    self.output, _, _ = self.net_g_ema(self.lq, w=self.fidelity_weight, mode='test', test_shape=test_shape)
+                    self.output, _, _ = self.net_g_ema(self.lq, w=self.fidelity_weight, mode='test',
+                                                       test_shape=self.test_shape, code_only=False)
             else:
                 logger = get_root_logger()
                 logger.warning('Do not have self.net_g_ema, use self.net_g.')
                 self.net_g.eval()
                 if w is not None:
-                    self.output, _, _ = self.net_g(self.lq, w=w, mode='test', test_shape=test_shape)
+                    self.output, _, _ = self.net_g(self.lq, w=w, mode='test', test_shape=self.test_shape, code_only=False)
                 else:
-                    self.output, _, _ = self.net_g(self.lq, w=self.fidelity_weight, mode='test', test_shape=test_shape)
+                    self.output, _, _ = self.net_g(self.lq, w=self.fidelity_weight, mode='test',
+                                                   test_shape=self.test_shape, code_only=False)
                 self.net_g.train()
 
     def dist_validation(self, dataloader, current_iter, tb_logger, save_img, rgb2bgr=True, w=None):
         if self.opt['rank'] == 0:
             self.nondist_validation(dataloader, current_iter, tb_logger, save_img, rgb2bgr=rgb2bgr, w=w)
 
-    def nondist_validation(self, dataloader, current_iter, tb_logger, save_img, w=None, rgb2bgr=True):
+    def nondist_validation(self, dataloader, current_iter, tb_logger, save_img, rgb2bgr=True, w=None):
         dataset_name = dataloader.dataset.opt['name']
+        self.test_shape = self.opt['val'].get('test_shape', None)
         with_metrics = self.opt['val'].get('metrics') is not None
         if with_metrics:
             self.metric_results = {metric: 0 for metric in self.opt['val']['metrics'].keys()}
         pbar = tqdm(total=len(dataloader), unit='image')
 
         for idx, val_data in enumerate(dataloader):
-            img_name, extension = osp.splitext(osp.basename(val_data['lq_path'][0]))[0], osp.splitext(osp.basename(val_data['lq_path'][0]))[1]
+            img_name = osp.splitext(osp.basename(val_data['lq_path'][0]))[0]
             self.feed_data(val_data)
             self.test(w)
 
@@ -254,15 +177,15 @@ class CodeFormerModel(SRModel):
 
             if save_img:
                 if self.opt['is_train']:
-                    save_img_path = osp.join(f'/home/dell/桌面/drh/JiShe/results',
-                                             f'{img_name}_handled{extension}')
+                    save_img_path = osp.join(self.opt['path']['visualization'], img_name,
+                                             f'{img_name}_{current_iter}.png')
                 else:
                     if self.opt['val']['suffix']:
-                        save_img_path = osp.join(f'/home/dell/桌面/drh/JiShe/results',
-                                                 f'{img_name}_{self.opt["val"]["suffix"]}_handled{extension}')
+                        save_img_path = osp.join(self.opt['path']['visualization'], dataset_name,
+                                                 f'{img_name}_{self.opt["val"]["suffix"]}.png')
                     else:
-                        save_img_path = osp.join(f'/home/dell/桌面/drh/JiShe/results',
-                                                 f'{img_name}_handled{extension}')
+                        save_img_path = osp.join(self.opt['path']['visualization'], dataset_name,
+                                                 f'{img_name}_{self.opt["name"]}.png')
                 imwrite(sr_img, save_img_path)
 
             if with_metrics:
@@ -273,8 +196,6 @@ class CodeFormerModel(SRModel):
             pbar.update(1)
             pbar.set_description(f'Test {img_name}')
         pbar.close()
-
-        psnr = 0
 
         if with_metrics:
             for metric in self.metric_results.keys():
@@ -305,10 +226,8 @@ class CodeFormerModel(SRModel):
 
     def get_current_visuals(self):
         out_dict = OrderedDict()
-
         out_dict['gt'] = self.gt.detach().cpu()
         out_dict['result'] = self.output.detach().cpu()
-
         return out_dict
 
     def save(self, epoch, current_iter):

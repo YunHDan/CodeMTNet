@@ -9,8 +9,8 @@ datasets:
   train:
     name: Lol_v2_Syn_FineTune
     type: PairedImageDataset
-    dataroot_lq: /hy-tmp/LOL-v2/Synthetic/Train/Normal
-    dataroot_gt: /hy-tmp/LOL-v2/Synthetic/Train/Normal
+    dataroot_lq: # ../LOL-v2/Synthetic/Train/Normal
+    dataroot_gt: # ../LOL-v2/Synthetic/Train/Normal
     filename_tmpl: '{}'
     io_backend:
       type: disk
@@ -21,7 +21,7 @@ datasets:
     use_rot: true
 
     num_worker_per_gpu: 1    # 64
-    batch_size_per_gpu: 16   # 16
+    batch_size_per_gpu: 1   # 16
     dataset_enlarge_ratio: 1
 
     prefetch_mode: cuda
@@ -39,8 +39,8 @@ datasets:
   val:
     name: LOL_v2_Syn_Test
     type: PairedImageDataset
-    dataroot_lq: /hy-tmp/LOL-v2/Synthetic/Test/Normal
-    dataroot_gt: /hy-tmp/LOL-v2/Synthetic/Test/Normal
+    dataroot_lq: # ../LOL-v2/Synthetic/Test/Normal
+    dataroot_gt: # ../LOL-v2/Synthetic/Test/Normal
     io_backend:
       type: disk
     scale: 1
@@ -63,10 +63,10 @@ network_d:
 
 # path
 path:
-  pretrain_network_g: /hy-tmp/optimize_stage3/net_g_pretrain.pth   # need to modify
+  pretrain_network_g: # net_g_pretrain.pth  
   param_key_g: params_ema
   strict_load_g: false
-  pretrain_network_d: /hy-tmp/optimize_stage3/net_d_pretrain.pth   # need to modify
+  pretrain_network_d: # net_d_pretrain.pth   
   strict_load_d: false
   resume_state: ~
 

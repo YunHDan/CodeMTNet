@@ -60,10 +60,10 @@ class TransformerSALayer(nn.Module):
         return tgt
 
 
-class MACR(nn.Module):
+class mcrb(nn.Module):
     def __init__(self, dim, norm_layer, attn_drop_rate, d_state, mlp_ratio, nhead,
                            dim_mlp, dropout, mamba_layers, transformer_layers, codebook_size):
-        super(MACR, self).__init__()
+        super(mcrb, self).__init__()
         blocks1 = []
         blocks2 = []
         # blocks3 = []

@@ -2,7 +2,7 @@ import importlib
 from copy import deepcopy
 from os import path as osp
 import sys
-sys.path.append(r"/home/dell/桌面/drh/CodeFormer/basicsr")
+sys.path.append(r"../basicsr")
 
 from utils import get_root_logger, scandir
 from utils.registry import ARCH_REGISTRY

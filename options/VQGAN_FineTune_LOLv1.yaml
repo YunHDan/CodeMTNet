@@ -9,8 +9,8 @@ datasets:
   train:
     name: LOL_v1_Fine_Tune
     type: PairedImageDataset
-    dataroot_lq: /home/dell/桌面/drh/LOL-v1/our485/high
-    dataroot_gt: /home/dell/桌面/drh/LOL-v1/our485/high
+    dataroot_lq: # ../LOL-v1/our485/high
+    dataroot_gt: # ../LOL-v1/our485/high
     filename_tmpl: '{}'
     io_backend:
       type: disk
@@ -21,7 +21,7 @@ datasets:
     use_rot: true
 
     num_worker_per_gpu: 1
-    batch_size_per_gpu: 8
+    batch_size_per_gpu: 1 # 8
     dataset_enlarge_ratio: 1
 
     prefetch_mode: ~
@@ -29,8 +29,8 @@ datasets:
   val:
     name: LOL_v1_Test
     type: PairedImageDataset
-    dataroot_lq: /home/dell/桌面/drh/LOL-v1/eval15/high
-    dataroot_gt: /home/dell/桌面/drh/LOL-v1/eval15/high
+    dataroot_lq: # ../LOL-v1/eval15/high
+    dataroot_gt: # ../LOL-v1/eval15/high
     io_backend:
       type: disk
     scale: 1
@@ -50,7 +50,7 @@ network_d:
 
 # path
 path:
-  pretrain_network_g: /home/dell/桌面/drh/retry_no_norm/net_g_pretrain.pth  # need to modify
+  pretrain_network_g: # net_g_pretrain.pth  
   param_key_g: params_ema
   strict_load_g: true
   pretrain_network_d: ~
