@@ -47,7 +47,7 @@ network_g:
   latent_size: 256
   fuse_encoder_block: [12, 8, 4]
   fuse_generator_block: [10, 13, 16]
-  fix_modules: ['dae','mcrb', 'hq_encoder', 'quantize','generator']
+  fix_modules: ['dae','macr', 'hq_encoder', 'quantize','generator']
   vqgan_path: ~
   img_size: 256
   nf: 64
