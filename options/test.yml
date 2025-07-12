@@ -25,7 +25,7 @@ network_g:
   latent_size: 256
   fuse_encoder_block: [12, 8, 4]
   fuse_generator_block: [10, 13, 16]
-  fix_modules: ['dae','mcrb', 'hq_encoder', 'quantize','generator']
+  fix_modules: ['dae','macr', 'hq_encoder', 'quantize','generator']
   vqgan_path: ~
   img_size: 256
   nf: 64
@@ -49,7 +49,7 @@ network_vqgan: # this config is needed if no pre-calculated latent
 path:
   pretrain_network_hq: ~
   strict_load_hq: false
-  pretrain_network_g: # experiments/LOLv1/net_g.pth
+  pretrain_network_g: ~ # experiments/LOLv1/net_g.pth
   param_key_g: params_ema
   strict_load_g: true
   resume_state: ~
