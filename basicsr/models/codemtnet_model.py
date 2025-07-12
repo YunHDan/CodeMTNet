@@ -244,14 +244,14 @@ class codemtnetModel(SRModel):
 
             if save_img:
                 if self.opt['is_train']:
-                    save_img_path = osp.join(f'/home/dell/桌面/drh/JiShe/results',
+                    save_img_path = osp.join(f'results',
                                              f'{img_name}_handled{extension}')
                 else:
                     if self.opt['val']['suffix']:
-                        save_img_path = osp.join(f'/home/dell/桌面/drh/JiShe/results',
+                        save_img_path = osp.join(f'results',
                                                  f'{img_name}_{self.opt["val"]["suffix"]}_handled{extension}')
                     else:
-                        save_img_path = osp.join(f'/home/dell/桌面/drh/JiShe/results',
+                        save_img_path = osp.join(f'results',
                                                  f'{img_name}_handled{extension}')
                 imwrite(sr_img, save_img_path)
 
