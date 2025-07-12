@@ -104,7 +104,7 @@ class codemtnet(VQAutoEncoder):
         )
 
         # macb
-        self.mcrb = mcrb(dim=dim_embd, norm_layer=nn.LayerNorm, attn_drop_rate=0, d_state=d_state,
+        self.macr = mcrb(dim=dim_embd, norm_layer=nn.LayerNorm, attn_drop_rate=0, d_state=d_state,
                          mlp_ratio=mlp_ratio, nhead=n_head,
                          dim_mlp=self.dim_mlp, dropout=0.0, mamba_layers=mamba_layers,
                          transformer_layers=transformer_layers,
@@ -170,7 +170,7 @@ class codemtnet(VQAutoEncoder):
         pos_emb = self.position_emb.unsqueeze(1).repeat(1, x.shape[0], 1)
 
         # Mamba-Assisted Codebook Retrival
-        logits = self.mcrb(lq_feat, pos_emb)
+        logits = self.macr(lq_feat, pos_emb)
         logits = logits.permute(1, 0, 2)  # (hw)bn -> b(hw)n
 
         if code_only:  # for training stage II
