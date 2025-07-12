@@ -49,7 +49,7 @@ network_g:
   latent_size: 256
   fuse_encoder_block: [12, 8, 4]  # block number in encoder where features will feed forward generator fusion block
   fuse_generator_block: [10, 13, 16]    # block number in decoder where features will be fused by fusion block
-  fix_modules: ['dae','mcrb', 'hq_encoder', 'quantize','generator']
+  fix_modules: ['dae','macr', 'hq_encoder', 'quantize','generator']
   vqgan_path: ~
   img_size: 256
   nf: 64
