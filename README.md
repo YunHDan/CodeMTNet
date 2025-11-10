@@ -1,4 +1,4 @@
-# [WACV 2026]:sparkles:Official Complement of CodeMTNet.
+# [WACV 2026] :sparkles:Official Complement of CodeMTNet.
 
 <img width="1264" alt="Overview" src="Figs/Overview.png">
 
