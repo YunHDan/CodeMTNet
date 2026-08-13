@@ -1,3 +1,5 @@
+
+
 # [WACV 2026] :sparkles: Codebook Knowledge with Mamba-Transformer For Low-Light Image Enhancement.
 
 <img width="1264" alt="Overview" src="Figs/Overview.png">
@@ -18,7 +20,7 @@ pip install ./causal_conv1d-1.0.0+cu118torch1.13cxx11abiFALSE-cp39-cp39-linux_x8
 wget https://bgithub.xyz/state-spaces/mamba/releases/download/v1.0.1/mamba_ssm-1.0.1+cu118torch1.13cxx11abiFALSE-cp39-cp39-linux_x86_64.whl
 pip install ./mamba_ssm-1.0.1+cu118torch1.13cxx11abiFALSE-cp39-cp39-linux_x86_64.whl
 pip install numpy==1.23.5 --force-reinstall
-pip install opencv-python, lpips, pynvml
+pip install opencv-python lpips pynvml
 ```
 
 Then you can use this command to test a photo:
@@ -36,6 +38,3 @@ You need to create a folder named 'experiments' in the CodeMTNet folder. Then we
 
 # Datasets
 The LOLv1, LOLv2 real, and LOLv2 synthetic datasets can be placed separately in the root directory of CodeMTNet.
-
-
-
